@@ -46,8 +46,6 @@ jobs:
           set +e
           chmod +x /root/eval-github-actions/scripts/pr-eval-demo.sh
           /root/eval-github-actions/scripts/pr-eval-demo.sh > pr-eval-output.md 2>&1
-          echo $? > pr-eval-exit-code.txt
-          exit 0
 
       - name: Comment result on PR
         if: always()
