@@ -43,8 +43,11 @@ jobs:
         id: eval
         shell: bash
         run: |
-          chmod +x scripts/pr-eval-demo.sh
-          ./scripts/pr-eval-demo.sh > pr-eval-output.md 2>&1
+          set +e
+          chmod +x /root/eval-github-actions/scripts/pr-eval-demo.sh
+          /root/eval-github-actions/scripts/pr-eval-demo.sh > pr-eval-output.md 2>&1
+          echo $? > pr-eval-exit-code.txt
+          exit 0
 
       - name: Comment result on PR
         if: always()
@@ -52,7 +55,16 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            let output = fs.readFileSync('pr-eval-output.md', 'utf8');
+
+            let output = 'No output file was generated.';
+            if (fs.existsSync('pr-eval-output.md')) {
+              output = fs.readFileSync('pr-eval-output.md', 'utf8');
+            }
+
+            let exitCode = 'unknown';
+            if (fs.existsSync('pr-eval-exit-code.txt')) {
+              exitCode = fs.readFileSync('pr-eval-exit-code.txt', 'utf8').trim();
+            }
 
             if (output.length > 60000) {
               output = output.slice(0, 60000) + "\n\n...output truncated...";
@@ -60,11 +72,13 @@ jobs:
 
             const body = `## PR Eval Report
 
-            Triggered by: @${context.payload.comment.user.login}
+Triggered by: @${context.payload.comment.user.login}
 
-            \`\`\`
-            ${output}
-            \`\`\``;
+Exit code: \`${exitCode}\`
+
+\`\`\`
+${output}
+\`\`\``;
 
             await github.rest.issues.createComment({
               owner: context.repo.owner,
