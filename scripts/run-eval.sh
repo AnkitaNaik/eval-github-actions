@@ -50,23 +50,39 @@ NUM_TASKS="${NUM_TASKS:-$DEFAULT_NUM_TASKS}"
 #   task_ids=id1,id2
 #   split_name=...
 #   num_tasks=...
-for token in ${COMMENT_BODY}; do
+COMMENT_BODY="${1:-}"
+
+# Remove Windows carriage returns and newlines.
+COMMENT_BODY="${COMMENT_BODY//$'\r'/ }"
+COMMENT_BODY="${COMMENT_BODY//$'\n'/ }"
+
+read -r -a TOKENS <<< "${COMMENT_BODY}"
+
+for token in "${TOKENS[@]}"; do
   case "${token}" in
-    /run-eval)
+    /run-eval|/appworld-eval)
       ;;
+
     model_name=*)
       MODEL_NAME="${token#model_name=}"
       ;;
-    task_ids=*)
-      TASK_IDS="${token#task_ids=}"
+
+    task_id=*|task_ids=*)
+      TASK_IDS="${token#*=}"
       TASK_IDS="${TASK_IDS//,/ }"
       ;;
+
     split_name=*)
       SPLIT_NAME="${token#split_name=}"
       ;;
+
     num_tasks=*)
       NUM_TASKS="${token#num_tasks=}"
       ;;
+
+    "")
+      ;;
+
     *)
       echo "ERROR: Unsupported parameter: ${token}"
       echo "Supported parameters: model_name, task_id, task_ids, split_name, num_tasks"
