@@ -31,8 +31,6 @@ trap on_exit EXIT
 
 : "${OPENAI_API_KEY:?OPENAI_API_KEY is required}"
 
-COMMENT_BODY="${1:-/appworld-eval}"
-
 DEFAULT_MODEL_NAME="openai/gpt-oss-120b-a100"
 DEFAULT_TASK_IDS="9aae7da_1 365e0a3_1 eb5ad85_1 5e27cd7_1"
 DEFAULT_SPLIT_NAME="default"
@@ -121,7 +119,14 @@ export MODEL_NAME
 export ENVIRONMENT_URL="${ENVIRONMENT_URL:-http://127.0.0.1:8000}"
 export APIS_URL="${APIS_URL:-http://127.0.0.1:9000}"
 
-cd "${GITHUB_WORKSPACE:-$(pwd)}"
+EVAL_REPO="/proj/cuga_models/cuga-eval"
+
+if [[ ! -d "${EVAL_REPO}" ]]; then
+  echo "ERROR: Evaluation repo not found: ${EVAL_REPO}"
+  exit 1
+fi
+
+cd "${EVAL_REPO}"
 
 echo "# PR Evaluation"
 echo
