@@ -1,0 +1,126 @@
+# .github/workflows/run-eval.yml
+name: CUGA Eval on Comment
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: eval-global
+  cancel-in-progress: false
+
+jobs:
+  run-eval:
+    if: >-
+      github.event.issue.pull_request &&
+      startsWith(github.event.comment.body, '/run-eval') &&
+      (
+        github.event.comment.author_association == 'OWNER' ||
+        github.event.comment.author_association == 'MEMBER' ||
+        github.event.comment.author_association == 'COLLABORATOR'
+      )
+    runs-on: [self-hosted, linux, run-eval]
+    timeout-minutes: 120
+
+    steps:
+      - name: Read PR metadata
+        id: pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+
+            core.setOutput("head_sha", pr.data.head.sha);
+            core.setOutput("head_repo", pr.data.head.repo.full_name);
+
+      - name: Checkout PR head commit
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ steps.pr.outputs.head_repo }}
+          ref: ${{ steps.pr.outputs.head_sha }}
+          fetch-depth: 0
+
+      - name: Run AppWorld evaluation
+        id: evaluation
+        shell: bash
+        env:
+          OPENAI_API_KEY: ${{ secrets.RITS_OPENAI_API_KEY }}
+          DYNACONF_SERVER_PORTS__REGISTRY: "8100"
+          AGENT_SETTING_CONFIG: settings.rits.toml
+          OPENAI_BASE_URL: https://inference-3scale-apicast-production.apps.rits.fmaas.res.ibm.com/gpt-oss-120b-a100
+          MODEL_NAME: openai/gpt-oss-120b-a100
+          ENVIRONMENT_URL: http://127.0.0.1:8000
+          APIS_URL: http://127.0.0.1:9000
+          PR_NUMBER: ${{ github.event.issue.number }}
+          PR_HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          set +e
+
+          bash /opt/appworld-eval/run-appworld-eval.sh \
+            "${COMMENT_BODY}" \
+            > appworld-eval-output.md 2>&1
+
+          status=$?
+          echo "${status}" > appworld-eval-exit-code.txt
+          exit 0
+
+      - name: Post result to PR
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("fs");
+
+            let output = "No evaluation output was generated.";
+            if (fs.existsSync("appworld-eval-output.md")) {
+              output = fs.readFileSync("appworld-eval-output.md", "utf8");
+            }
+
+            let exitCode = "unknown";
+            if (fs.existsSync("appworld-eval-exit-code.txt")) {
+              exitCode = fs.readFileSync(
+                "appworld-eval-exit-code.txt",
+                "utf8"
+              ).trim();
+            }
+
+            if (output.length > 60000) {
+              output =
+                output.slice(0, 60000) +
+                "\n\n...output truncated...";
+            }
+
+            const result = exitCode === "0" ? "SUCCESS" : "FAILED";
+
+            const body = `## AppWorld Evaluation
+
+            - Triggered by: @${context.payload.comment.user.login}
+            - Command: \`${context.payload.comment.body}\`
+            - PR head: \`${{ steps.pr.outputs.head_sha }}\`
+            - Result: **${result}**
+            - Exit code: \`${exitCode}\`
+
+            ${output}`.replace(/^ {12}/gm, "");
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });
+
+      - name: Mark workflow failed when evaluation failed
+        if: always()
+        shell: bash
+        run: |
+          test "$(cat appworld-eval-exit-code.txt 2>/dev/null || echo 1)" -eq 0
