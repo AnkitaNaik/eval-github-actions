@@ -130,6 +130,7 @@ cd "${EVAL_REPO}"
 
 echo "# PR Evaluation"
 echo
+echo ######## REPORT START ########
 echo "## Run metadata"
 echo "- Repository: ${GITHUB_REPOSITORY:-unknown}"
 echo "- PR: ${PR_NUMBER:-unknown}"
@@ -146,6 +147,7 @@ for task_id in "${TASK_ID_ARRAY[@]}"; do
   echo "  - ${task_id}"
 done
 echo
+echo ######## REPORT END ########
 
 log "Verifying required commands"
 command -v uv >/dev/null 2>&1 || {
