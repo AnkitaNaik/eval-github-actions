@@ -66,12 +66,12 @@ jobs:
         run: |
           set +e
 
-          bash /opt/appworld-eval/run-appworld-eval.sh \
-            "${COMMENT_BODY}" \
-            > appworld-eval-output.md 2>&1
+          bash /proj/cuga_models/eval-github-actions/scripts/run-eval.sh \
+              "${COMMENT_BODY}" \
+              > run-eval-output.md 2>&1
 
           status=$?
-          echo "${status}" > appworld-eval-exit-code.txt
+          echo "${status}" > run-eval-exit-code.txt
           exit 0
 
       - name: Post result to PR
@@ -82,14 +82,14 @@ jobs:
             const fs = require("fs");
 
             let output = "No evaluation output was generated.";
-            if (fs.existsSync("appworld-eval-output.md")) {
-              output = fs.readFileSync("appworld-eval-output.md", "utf8");
+            if (fs.existsSync("run-eval-output.md")) {
+              output = fs.readFileSync("run-eval-output.md", "utf8");
             }
 
             let exitCode = "unknown";
-            if (fs.existsSync("appworld-eval-exit-code.txt")) {
+            if (fs.existsSync("run-eval-exit-code.txt")) {
               exitCode = fs.readFileSync(
-                "appworld-eval-exit-code.txt",
+                "run-eval-exit-code.txt",
                 "utf8"
               ).trim();
             }
