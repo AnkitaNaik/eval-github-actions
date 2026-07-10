@@ -73,7 +73,7 @@ jobs:
           status=$?
           echo "${status}" > run-eval-exit-code.txt
           exit 0
-
+      
       - name: Post result to PR
         if: always()
         uses: actions/github-script@v7
@@ -82,38 +82,54 @@ jobs:
             const fs = require("fs");
       
             let output = "No evaluation output was generated.";
+      
             if (fs.existsSync("run-eval-output.md")) {
               output = fs.readFileSync("run-eval-output.md", "utf8");
             }
       
-            // Extract only the LAST report section.
             const startMarker = "######## REPORT START ########";
             const endMarker = "######## REPORT END ########";
       
-            const lastStart = output.lastIndexOf(startMarker);
-            const lastEnd = output.lastIndexOf(endMarker);
+            const escapedStart = startMarker.replace(
+              /[.*+?^${}()|[\]\\]/g,
+              "\\$&"
+            );
       
-            if (
-              lastStart !== -1 &&
-              lastEnd !== -1 &&
-              lastEnd > lastStart
-            ) {
-              output = output
-                .substring(lastStart + startMarker.length, lastEnd)
-                .trim();
+            const escapedEnd = endMarker.replace(
+              /[.*+?^${}()|[\]\\]/g,
+              "\\$&"
+            );
+      
+            const reportPattern = new RegExp(
+              `${escapedStart}\\s*([\\s\\S]*?)\\s*${escapedEnd}`,
+              "g"
+            );
+      
+            const reportBlocks = [...output.matchAll(reportPattern)]
+              .map(match => match[1].trim())
+              .filter(block => block.length > 0);
+      
+            if (reportBlocks.length > 0) {
+              output = reportBlocks.join("\n\n---\n\n");
             } else {
-              output = "⚠️ No report section found.";
+              output = "⚠️ No non-empty report sections were found.";
             }
       
             let exitCode = "unknown";
+      
             if (fs.existsSync("run-eval-exit-code.txt")) {
-              exitCode = fs.readFileSync(
-                "run-eval-exit-code.txt",
-                "utf8"
-              ).trim();
+              exitCode = fs
+                .readFileSync("run-eval-exit-code.txt", "utf8")
+                .trim();
             }
       
             const result = exitCode === "0" ? "SUCCESS" : "FAILED";
+      
+            if (output.length > 60000) {
+              output =
+                output.slice(0, 60000) +
+                "\n\n...report truncated...";
+            }
       
             const body = `## Run Evaluation
       
