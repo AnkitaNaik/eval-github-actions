@@ -14,6 +14,7 @@ on_exit() {
   end_time="$(date -u +"%Y-%m-%d %H:%M:%S UTC")"
   duration=$((end_epoch - START_EPOCH))
 
+  echo ######## REPORT START ########
   echo
   echo "## Run summary"
   echo "- Started: ${START_TIME}"
@@ -26,6 +27,7 @@ on_exit() {
   else
     echo "- Result: FAILED"
   fi
+  echo ######## REPORT END ########
 }
 trap on_exit EXIT
 
@@ -55,7 +57,7 @@ COMMENT_BODY="${COMMENT_BODY//$'\r'/ }"
 COMMENT_BODY="${COMMENT_BODY//$'\n'/ }"
 
 read -r -a TOKENS <<< "${COMMENT_BODY}"
-
+echo ######## REPORT START ########
 for token in "${TOKENS[@]}"; do
   case "${token}" in
     /run-eval|/appworld-eval)
@@ -105,6 +107,7 @@ if [[ ${#TASK_ID_ARRAY[@]} -eq 0 ]]; then
   echo "ERROR: At least one task_id is required."
   exit 2
 fi
+echo ######## REPORT END ########
 
 # num_tasks is currently a dummy input, but limit the supplied task list to make
 # the mock behavior predictable.
@@ -128,9 +131,9 @@ fi
 
 cd "${EVAL_REPO}"
 
+echo ######## REPORT START ########
 echo "# PR Evaluation"
 echo
-echo ######## REPORT START ########
 echo "## Run metadata"
 echo "- Repository: ${GITHUB_REPOSITORY:-unknown}"
 echo "- PR: ${PR_NUMBER:-unknown}"
