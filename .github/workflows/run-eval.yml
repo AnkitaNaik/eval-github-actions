@@ -11,8 +11,8 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: eval-global
-  cancel-in-progress: false
+  group: eval-${{ github.event.issue.number }}
+  cancel-in-progress: true
 
 jobs:
   run-eval:
