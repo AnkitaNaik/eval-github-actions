@@ -12,14 +12,18 @@ on_exit() {
   status=$?
   end_epoch="$(date +%s)"
   end_time="$(date -u +"%Y-%m-%d %H:%M:%S UTC")"
-  duration=$((end_epoch - START_EPOCH))
+  duration=$((end_epoch - START_EPOCH
+  
+  minutes=$((duration / 60))
+  seconds=$((duration % 60))))
+  
 
   echo "######## REPORT START ########"
   echo
   echo "## Run summary"
   echo "- Started: ${START_TIME}"
   echo "- Finished: ${end_time}"
-  echo "- Duration: ${duration} seconds"
+  echo "- Duration: ${minutes}m ${seconds}s"
   echo "- Exit code: ${status}"
 
   if [[ ${status} -eq 0 ]]; then
